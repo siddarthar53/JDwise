@@ -1,0 +1,290 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Rolewrite Design System
+   Palette: Signal Indigo (#4338CA) · Ink (#14152B) · Ledger Amber (#F59E0B)
+            Emerald (#10B981) · Rose (#E11D48) · Paper (#F7F7FB)
+   Type: Space Grotesk (display) · Inter (body) · JetBrains Mono (data)
+   ============================================================ */
+
+@layer base {
+  :root {
+    --background: 240 20% 98%;
+    --foreground: 240 25% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 25% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 25% 12%;
+
+    /* Primary - Signal Indigo */
+    --primary: 244 58% 51%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 244 55% 42%;
+
+    /* Secondary - cool slate */
+    --secondary: 240 20% 95%;
+    --secondary-foreground: 240 25% 20%;
+
+    --muted: 240 18% 95%;
+    --muted-foreground: 240 10% 46%;
+
+    /* Accent - Emerald (used for approved / success) */
+    --accent: 160 84% 34%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 30 40% 12%;
+    --success: 160 84% 34%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 240 20% 90%;
+    --input: 240 20% 92%;
+    --ring: 244 58% 51%;
+
+    /* Chat Interface */
+    --chat-bg: 240 20% 97%;
+    --user-bubble: 244 58% 51%;
+    --system-bubble: 0 0% 100%;
+    --mention-bg: 160 60% 96%;
+    --mention-border: 160 84% 34%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(244 58% 51%) 0%, hsl(258 60% 46%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(240 20% 99%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(240 30% 12%) 0%, hsl(244 45% 22%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(240 25% 12% / 0.05);
+    --shadow-md: 0 4px 10px -2px hsl(240 25% 12% / 0.08), 0 2px 4px -2px hsl(240 25% 12% / 0.05);
+    --shadow-lg: 0 16px 32px -8px hsl(240 25% 12% / 0.14), 0 4px 8px -4px hsl(240 25% 12% / 0.06);
+    --shadow-glow: 0 0 30px hsl(244 58% 51% / 0.25);
+
+    --radius: 0.85rem;
+
+    /* Sidebar - Ink */
+    --sidebar-background: 240 32% 11%;
+    --sidebar-foreground: 240 20% 88%;
+    --sidebar-primary: 244 70% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 28% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 25% 20%;
+    --sidebar-ring: 244 70% 65%;
+  }
+
+  .dark {
+    --background: 240 30% 7%;
+    --foreground: 240 20% 94%;
+
+    --card: 240 28% 10%;
+    --card-foreground: 240 20% 94%;
+
+    --popover: 240 28% 10%;
+    --popover-foreground: 240 20% 94%;
+
+    --primary: 244 70% 68%;
+    --primary-foreground: 240 30% 10%;
+    --primary-hover: 244 70% 75%;
+
+    --secondary: 240 20% 16%;
+    --secondary-foreground: 240 20% 90%;
+
+    --muted: 240 20% 16%;
+    --muted-foreground: 240 12% 65%;
+
+    --accent: 160 70% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 347 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 88% 58%;
+    --warning-foreground: 30 40% 10%;
+    --success: 160 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 240 20% 18%;
+    --input: 240 20% 18%;
+    --ring: 244 70% 68%;
+
+    --chat-bg: 240 28% 9%;
+    --user-bubble: 244 70% 60%;
+    --system-bubble: 240 26% 13%;
+    --mention-bg: 160 40% 14%;
+    --mention-border: 160 70% 40%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(244 70% 60%) 0%, hsl(258 65% 52%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(240 28% 11%) 0%, hsl(240 30% 9%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(240 32% 8%) 0%, hsl(244 45% 18%) 100%);
+
+    --sidebar-background: 240 34% 6%;
+    --sidebar-foreground: 240 18% 85%;
+    --sidebar-primary: 244 70% 68%;
+    --sidebar-primary-foreground: 240 30% 10%;
+    --sidebar-accent: 240 26% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 22% 16%;
+    --sidebar-ring: 244 70% 68%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1, h2, h3, h4 {
+    font-family: theme('fontFamily.display');
+    @apply tracking-tight;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+  }
+}
+
+@layer components {
+  /* Chat Interface */
+  .chat-bubble {
+    @apply rounded-2xl px-4 py-3 max-w-xs sm:max-w-md break-words;
+  }
+
+  .chat-bubble-user {
+    @apply text-primary-foreground ml-auto;
+    background: var(--gradient-primary);
+  }
+
+  .chat-bubble-system {
+    @apply bg-card text-card-foreground border shadow-sm;
+  }
+
+  .mention-badge {
+    @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-md;
+    background: hsl(var(--mention-bg));
+    border: 1px solid hsl(var(--mention-border));
+    color: hsl(var(--accent));
+  }
+
+  /* Cards */
+  .card-elevated {
+    @apply bg-card border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300;
+  }
+
+  .card-interactive {
+    @apply cursor-pointer transition-all duration-200 hover:-translate-y-0.5;
+  }
+
+  /* Buttons */
+  .btn-corporate {
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200;
+    background: var(--gradient-primary);
+    color: hsl(var(--primary-foreground));
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-corporate:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Status pills */
+  .status-pending {
+    @apply bg-warning/10 text-warning border-warning/20;
+  }
+
+  .status-approved {
+    @apply bg-success/10 text-success border-success/20;
+  }
+
+  .status-rejected {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
+  }
+
+  /* Signature element: JD pipeline stepper */
+  .stage-track {
+    @apply flex items-center w-full;
+  }
+
+  .stage-dot {
+    @apply relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-mono font-semibold z-10;
+  }
+
+  .stage-dot-done {
+    @apply bg-primary border-primary text-primary-foreground;
+  }
+
+  .stage-dot-current {
+    @apply bg-background border-primary text-primary;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15);
+  }
+
+  .stage-dot-pending {
+    @apply bg-muted border-border text-muted-foreground;
+  }
+
+  .stage-dot-rejected {
+    @apply bg-destructive border-destructive text-destructive-foreground;
+  }
+
+  .stage-connector {
+    @apply h-0.5 flex-1 -mx-px;
+  }
+
+  .stage-connector-done {
+    background: hsl(var(--primary));
+  }
+
+  .stage-connector-pending {
+    background: hsl(var(--border));
+  }
+
+  /* Animations */
+  .fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .slide-up {
+    animation: slide-up 0.4s ease-out;
+  }
+
+  .scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+  50% { box-shadow: 0 0 30px hsl(var(--primary) / 0.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .slide-up, .scale-in, .card-interactive {
+    animation: none !important;
+    transition: none !important;
+  }
+}
