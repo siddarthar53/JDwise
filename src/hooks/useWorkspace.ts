@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { AdminOverview, AppNotification, ChatConversation, ChatMessage, DirectoryUser } from '@/types';
+import { AdminOverview, AppNotification, ChatConversation, ChatMessage, DirectoryUser, Preferences, QAAnswer, QueryResult } from '@/types';
 
 export function useDirectory() {
   return useQuery({
@@ -94,5 +94,73 @@ export function useSendReminder() {
     mutationFn: ({ userIds, message }: { userIds: string[]; message?: string }) =>
       api.post('/admin/remind', { userIds, message }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// ---------------------------------------------------------------------------- agentic additions
+
+export function useAsk() {
+  return useMutation({
+    mutationFn: (question: string) => api.post<{ answer: QAAnswer }>('/assistant/ask', { question }).then((r) => r.answer),
+  });
+}
+
+export function usePreferences() {
+  return useQuery({
+    queryKey: ['preferences'],
+    queryFn: () => api.get<{ preferences: Preferences }>('/me/preferences').then((r) => r.preferences),
+  });
+}
+
+export function useSavePreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: Partial<Preferences>) => api.put<{ preferences: Preferences }>('/me/preferences', p).then((r) => r.preferences),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['preferences'] }),
+  });
+}
+
+export function useOpsAsk() {
+  return useMutation({
+    mutationFn: (question: string) =>
+      api.post<{ route: { query_id: string; params: Record<string, unknown>; rationale?: string }; result: QueryResult }>('/admin/ops/ask', { question }),
+  });
+}
+
+export function useAnalyticsCatalog() {
+  return useQuery({
+    queryKey: ['analytics-catalog'],
+    queryFn: () => api.get<{ catalog: { id: string; description: string; params: Record<string, string> }[] }>('/admin/analytics/catalog').then((r) => r.catalog),
+  });
+}
+
+export interface ReminderDraft {
+  to_user_id: string;
+  to_name: string;
+  jd_id: string;
+  subject: string;
+  message: string;
+}
+
+export function useStuckJds(minAgeHours = 48) {
+  return useQuery({
+    queryKey: ['ops-stuck', minAgeHours],
+    queryFn: () => api.get<{ items: any[]; drafts: ReminderDraft[] }>(`/admin/ops/stuck?min_age_hours=${minAgeHours}`),
+  });
+}
+
+export function useSendReminders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (drafts: ReminderDraft[]) => api.post('/admin/ops/send-reminders', { drafts }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ops-stuck'] }),
+  });
+}
+
+export function useAdminMetrics(days = 30) {
+  return useQuery({
+    queryKey: ['admin-metrics', days],
+    queryFn: () => api.get<{ business: any; agent: any; runs: any[]; agentOnline: boolean }>(`/admin/metrics?days=${days}`),
+    refetchInterval: 30_000,
   });
 }

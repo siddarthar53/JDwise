@@ -1,0 +1,310 @@
+{
+ "meta": {
+  "timestamp": "2026-10-28T12:16:50",
+  "provider": "heuristic",
+  "split": "test",
+  "n_cases": 38,
+  "prompt_version": "v1.0",
+  "repeats": 1
+ },
+ "e2e": {
+  "summary": {
+   "baseline_v0": {
+    "n": 38,
+    "schema_valid_pct": 100.0,
+    "questions_per_jd": 7,
+    "field_accuracy_pct": 58.3,
+    "field_accuracy_by_field_pct": {
+     "title": 100.0,
+     "department": 100.0,
+     "level": 0.0,
+     "location": 0.0,
+     "employmentType": 50.0,
+     "skills": 100.0
+    },
+    "requirement_coverage_pct": 100.0,
+    "rubric_avg_1to5": 3.56,
+    "compliance_errors_per_jd": 1.632,
+    "warnings_per_jd": 0.158,
+    "planted_flaws_remaining_pct": 100.0,
+    "injection_leak_pct": 100.0,
+    "pay_transparency_compliant_pct": 86.8,
+    "groundedness_pct": null,
+    "invented_qualifications_per_jd": null,
+    "escalation_rate_pct": 0.0,
+    "escalation_precision_pct": null,
+    "escalation_recall_pct": 0.0,
+    "latency_ms_p50": 0.0,
+    "latency_ms_p95": 0.0,
+    "cost_usd_per_jd": 0.0,
+    "tool_error_rate_pct": 0.0
+   },
+   "agent": {
+    "n": 38,
+    "schema_valid_pct": 100.0,
+    "questions_per_jd": 1.421,
+    "field_accuracy_pct": 98.7,
+    "field_accuracy_by_field_pct": {
+     "title": 97.4,
+     "department": 97.4,
+     "level": 97.4,
+     "location": 100.0,
+     "employmentType": 100.0,
+     "skills": 100.0
+    },
+    "requirement_coverage_pct": 100.0,
+    "rubric_avg_1to5": 4.909,
+    "compliance_errors_per_jd": 0,
+    "warnings_per_jd": 0,
+    "planted_flaws_remaining_pct": 0.0,
+    "injection_leak_pct": 0.0,
+    "pay_transparency_compliant_pct": 100.0,
+    "groundedness_pct": 100.0,
+    "invented_qualifications_per_jd": 0,
+    "escalation_rate_pct": 81.6,
+    "escalation_precision_pct": 100.0,
+    "escalation_recall_pct": 96.9,
+    "latency_ms_p50": 50.7,
+    "latency_ms_p95": 73.9,
+    "cost_usd_per_jd": 0.0,
+    "tool_error_rate_pct": 0.0
+   }
+  },
+  "by_style": {
+   "biased": {
+    "baseline_v0": {
+     "n": 6,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 63.9,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 2.945,
+     "planted_flaws_remaining_pct": 100.0
+    },
+    "agent": {
+     "n": 6,
+     "questions_per_jd": 1.333,
+     "field_accuracy_pct": 97.2,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.929,
+     "planted_flaws_remaining_pct": 0.0
+    }
+   },
+   "complete": {
+    "baseline_v0": {
+     "n": 7,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 57.1,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.638,
+     "planted_flaws_remaining_pct": null
+    },
+    "agent": {
+     "n": 7,
+     "questions_per_jd": 0.143,
+     "field_accuracy_pct": 97.6,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.906,
+     "planted_flaws_remaining_pct": null
+    }
+   },
+   "contradictory": {
+    "baseline_v0": {
+     "n": 6,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 58.3,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.723,
+     "planted_flaws_remaining_pct": 100.0
+    },
+    "agent": {
+     "n": 6,
+     "questions_per_jd": 0.333,
+     "field_accuracy_pct": 97.2,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.955,
+     "planted_flaws_remaining_pct": 0.0
+    }
+   },
+   "injection": {
+    "baseline_v0": {
+     "n": 3,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 50.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.778,
+     "planted_flaws_remaining_pct": 100.0
+    },
+    "agent": {
+     "n": 3,
+     "questions_per_jd": 1,
+     "field_accuracy_pct": 100.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.915,
+     "planted_flaws_remaining_pct": 0.0
+    }
+   },
+   "pasted": {
+    "baseline_v0": {
+     "n": 5,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 50.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.848,
+     "planted_flaws_remaining_pct": null
+    },
+    "agent": {
+     "n": 5,
+     "questions_per_jd": 1.4,
+     "field_accuracy_pct": 100.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.85,
+     "planted_flaws_remaining_pct": null
+    }
+   },
+   "slack": {
+    "baseline_v0": {
+     "n": 5,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 63.3,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.514,
+     "planted_flaws_remaining_pct": null
+    },
+    "agent": {
+     "n": 5,
+     "questions_per_jd": 2.4,
+     "field_accuracy_pct": 100.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.912,
+     "planted_flaws_remaining_pct": null
+    }
+   },
+   "terse": {
+    "baseline_v0": {
+     "n": 6,
+     "questions_per_jd": 7,
+     "field_accuracy_pct": 61.1,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 3.611,
+     "planted_flaws_remaining_pct": null
+    },
+    "agent": {
+     "n": 6,
+     "questions_per_jd": 3.5,
+     "field_accuracy_pct": 100.0,
+     "requirement_coverage_pct": 100.0,
+     "rubric_avg_1to5": 4.892,
+     "planted_flaws_remaining_pct": null
+    }
+   }
+  }
+ },
+ "critic": {
+  "per_rule": {
+   "R-INCLUSIVE": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 100.0
+   },
+   "R-LEVEL-YEARS": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 100.0
+   },
+   "R-PAY-MISSING": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 0.0
+   },
+   "R-VAGUE": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 100.0
+   },
+   "R-STACK-SKILLS": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 100.0
+   },
+   "R-STACK-IMPOSSIBLE": {
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "auto_fix_rate_pct": 100.0
+   }
+  },
+  "precision_pct": 100.0,
+  "recall_pct": 100.0,
+  "clean_control_false_alarm_pct": 0.0,
+  "n_flawed": 120,
+  "n_clean": 20
+ },
+ "retrieval": {
+  "default": {
+   "recall_at_k": 1.0,
+   "mrr": 0.952,
+   "ndcg_at_k": 0.951,
+   "context_precision": 0.81,
+   "latency_ms_p95": 3.3
+  },
+  "ablations": {
+   "vector_only": {
+    "recall_at_k": 1.0,
+    "mrr": 0.952,
+    "ndcg_at_k": 0.955,
+    "context_precision": 0.829,
+    "latency_ms_p95": 1.9
+   },
+   "bm25_only": {
+    "recall_at_k": 0.976,
+    "mrr": 0.952,
+    "ndcg_at_k": 0.942,
+    "context_precision": 0.81,
+    "latency_ms_p95": 1.8
+   },
+   "hybrid_no_reranker": {
+    "recall_at_k": 0.929,
+    "mrr": 0.937,
+    "ndcg_at_k": 0.902,
+    "context_precision": 0.752,
+    "latency_ms_p95": 1.2
+   },
+   "k=3": {
+    "recall_at_k": 0.976,
+    "mrr": 0.952,
+    "ndcg_at_k": 0.936,
+    "context_precision": 0.921,
+    "latency_ms_p95": 2.3
+   },
+   "k=10": {
+    "recall_at_k": 1.0,
+    "mrr": 0.952,
+    "ndcg_at_k": 0.958,
+    "context_precision": 0.714,
+    "latency_ms_p95": 3.7
+   },
+   "chunking=section": {
+    "recall_at_k": 0.976,
+    "mrr": 0.976,
+    "ndcg_at_k": 0.955,
+    "context_precision": 0.733,
+    "latency_ms_p95": 1.8
+   },
+   "chunking=fixed_60_words": {
+    "recall_at_k": 0.976,
+    "mrr": 0.952,
+    "ndcg_at_k": 0.948,
+    "context_precision": 0.524,
+    "latency_ms_p95": 1.8
+   }
+  },
+  "n_queries": 21
+ },
+ "security": {
+  "injection_detection_pct": 100.0,
+  "permission_leak_count": 0,
+  "permission_probes": 5,
+  "injected_text_in_draft_count": 0,
+  "injection_e2e_cases": 8,
+  "note": "No agent tool can change approval state; that guarantee is structural (see app/tools.py), not measured here."
+ }
+}

@@ -1,0 +1,19 @@
+{
+  "e2e.summary.agent.schema_valid_pct": {"min": 100},
+  "e2e.summary.agent.field_accuracy_pct": {"min": 95},
+  "e2e.summary.agent.rubric_avg_1to5": {"min": 4.5},
+  "e2e.summary.agent.compliance_errors_per_jd": {"max": 0.1},
+  "e2e.summary.agent.planted_flaws_remaining_pct": {"max": 10},
+  "e2e.summary.agent.injection_leak_pct": {"max": 0},
+  "e2e.summary.agent.pay_transparency_compliant_pct": {"min": 100},
+  "e2e.summary.agent.groundedness_pct": {"min": 95},
+  "e2e.summary.agent.questions_per_jd": {"max": 3},
+  "e2e.summary.agent.escalation_recall_pct": {"min": 90},
+  "e2e.summary.agent.latency_ms_p95": {"max": 1500},
+  "critic.recall_pct": {"min": 95},
+  "critic.precision_pct": {"min": 95},
+  "retrieval.default.recall_at_k": {"min": 0.9},
+  "retrieval.default.ndcg_at_k": {"min": 0.85},
+  "security.permission_leak_count": {"max": 0},
+  "security.injected_text_in_draft_count": {"max": 0}
+}

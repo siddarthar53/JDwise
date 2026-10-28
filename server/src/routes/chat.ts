@@ -4,6 +4,7 @@ import Message from '../models/Message';
 import { requireAuth, AuthedRequest } from '../middleware/auth';
 import { notify } from '../utils/notify';
 import User from '../models/User';
+import { agentFire } from '../utils/agentClient';
 
 const router = Router();
 
@@ -71,6 +72,19 @@ router.post('/conversations/:id/messages', requireAuth, async (req: AuthedReques
   await conversation.save();
 
   const sender = await User.findById(req.userId);
+  // index for permission-aware Q&A (participants travel with the chunk)
+  const names = await User.find({ _id: { $in: conversation.participants } }).select('name');
+  agentFire('POST', '/index/message', {
+    message: {
+      id: message._id.toString(),
+      conversation_id: conversation._id.toString(),
+      participants: conversation.participants.map(String),
+      participant_names: names.map((n) => n.name),
+      sender_name: sender?.name || '',
+      content,
+      at: message.createdAt,
+    },
+  });
   const others = conversation.participants.filter((p) => p.toString() !== req.userId);
   await Promise.all(
     others.map((uid) =>

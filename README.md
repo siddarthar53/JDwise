@@ -1,221 +1,202 @@
-# Rolewrite (JD Platform)
+# JDwise — agentic JD drafting & approval platform
 
-> A role-based **Job Description (JD) management** app for HR teams and employees — AI-assisted JD drafting, multi-level approval workflows (manager → HR), peer mentions, real chat, and an HR company-wide dashboard. Backed by a **Node/Express + MongoDB** API.
+> Role-based **Job Description** platform: an AI drafting agent (adaptive intake → retrieval-grounded generation → tools → critic loop → human-in-the-loop), a reviewer copilot, a revision agent for rejections, permission-aware Q&A, and an ops agent for HR — on top of a server-enforced approval pipeline (`draft → pending_manager → pending_hr → approved/rejected`).
 
-![Stack](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?logo=mongodb&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind-3-38B2AC?logo=tailwind-css&logoColor=white)
+**Principle:** AI proposes; humans and the state machine decide. No agent tool or endpoint can change a JD's approval status, every AI output is schema-validated twice (agent + API), and every AI layer is measured against the original rule-based flow (Baseline v0).
 
----
-
-## Table of Contents
-
-1. [Architecture](#architecture)
-2. [User Roles & Demo Accounts](#user-roles--demo-accounts)
-3. [Getting Started](#getting-started)
-4. [Environment Variables](#environment-variables)
-5. [Deployment](#deployment)
-6. [API Overview](#api-overview)
-7. [Design System](#design-system)
-8. [Project Structure](#project-structure)
-9. [Notes & Limitations](#notes--limitations)
+![Stack](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white) ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-0.11x-009688?logo=fastapi&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-1.x-1C3C3C)
 
 ---
 
 ## Architecture
 
 ```text
-jd-convo/
-├── src/                # React + Vite frontend
-│   ├── lib/api.ts       # fetch wrapper (adds JWT, base URL)
-│   ├── context/AuthContext.tsx   # real login/register/me against the API
-│   ├── hooks/useJDs.ts, useWorkspace.ts   # react-query hooks for every resource
-│   ├── types/index.ts   # shared frontend types
-│   └── components/workspace/     # AppShell, JdConversation, ApprovalsList,
-│                                  # ChatPanel, AdminOverview, PipelineStepper
-└── server/              # Express + MongoDB API
-    └── src/
-        ├── models/       # User, JobDescription, Conversation, Message, Notification
-        ├── routes/       # auth, users, jds, chat, notifications, admin
-        ├── middleware/auth.ts     # JWT verification
-        └── utils/jdAgent.ts       # rule-based JD question flow (+ optional LLM polish)
+React (Vite, TS) ──► Express API  (auth, JD CRUD, state machine, chat, notifications, analytics)   server/
+                        │  HMAC-signed calls  ▲ signed callbacks (idempotent apply)
+                        ▼                     │
+              Agent service (Python · FastAPI · LangGraph)                                         agent/
+                ├─ Intake agent (slot filling, asks only what's missing)
+                ├─ Retrieval: hybrid BM25 + vectors → RRF → metadata-aware reranker, with citations
+                ├─ Tools: find_similar_jds · get_org_context · get_salary_band · normalize_skills · check_duplicate_role
+                ├─ Generator → schema validation/repair → Critic (rules + LLM) ⟲ revise (bounded)
+                ├─ Confidence routing → human interrupt (checkpointed, resumable) → finalize
+                ├─ Reviewer copilot · Revision agent · Q&A (permission-filtered) · Ops router · reminder drafts
+                └─ Runs/traces, tokens, cost, budgets, fallbacks
+                        │
+          MongoDB: app data · agent_runs (traces) · kb_chunks (RAG index)  ·  SQLite: LangGraph checkpoints
 ```
 
-The frontend talks to the API over plain `fetch` (`VITE_API_URL`, default `http://localhost:5000/api`) with a JWT stored in `localStorage` and sent as `Authorization: Bearer <token>`.
+**LLM provider.** With `ANTHROPIC_API_KEY` set the agents use Claude (small model for intake/critic/routing, large for generation/revision; forced-tool structured output; prompt caching; retries → repair → other model → deterministic fallback). Without a key every layer runs on a **deterministic implementation** of the same step, so the whole product — and the eval suite — works offline. If the agent service is down, the API falls back to the original 7-question flow.
 
-### JD approval pipeline
+### What each AI layer does (all implemented)
 
-Every JD moves through: `draft → pending_manager → pending_hr → approved` (or `rejected` at either approval stage). If an employee has no manager, it skips straight to `pending_hr`. This is enforced server-side in `server/src/routes/jds.ts`, not just in the UI.
-
----
-
-## User Roles & Demo Accounts
-
-Seeded by `npm run seed` inside `/server` (see below).
-
-| Email               | Password    | Name          | Role       | Hierarchy           |
-| ------------------- | ----------- | ------------- | ---------- | -------------------- |
-| `hr@demo.com`       | `Hr@123`    | Sarah Johnson | `hr`       | —                     |
-| `manager@demo.com`  | `Mgr@123`   | Michael Chen  | `employee` | Manages Alex, Jamie, Taylor |
-| `employee@demo.com` | `Emp@123`   | Alex Rivera   | `employee` | Reports to Michael    |
-| `peer@demo.com`     | `Peer@123`  | Jamie Wilson  | `employee` | Reports to Michael    |
-| `taylor@demo.com`   | `Taylor@123`| Taylor Kim    | `employee` | Reports to Michael    |
-
-A user is treated as a **manager** purely when someone else's `reportsTo` points at them — no separate role needed.
+| Layer | Where | What it does |
+|---|---|---|
+| 1. Adaptive intake | `agent/app/agents/intake.py` | Extracts title, department, level, location, work mode, type, years, salary, skills, responsibilities from a brief, Slack message or pasted JD; per-field confidence; asks the single most useful next question; "same but Senior" directives; turn cap. |
+| 2. RAG | `agent/app/rag/` | Section/bullet-aware chunks of approved JDs, a role library and the style guide; hybrid BM25 + embeddings with RRF and a level/department-aware reranker; every bullet records its source chunk. Approved JDs are indexed on approval. |
+| 3. Generator + tools | `generator.py`, `tools.py` | Allow-listed, read-only tools with arg schemas, timeouts, retries, idempotency cache, per-run cap, parallel execution. |
+| 4. Critic loop | `critic.py` | Deterministic rules (pay transparency, band compliance, inclusive language, level/years contradictions, impossible "N years of <tech>", vague/duplicate bullets, requirement stacks, duplicate roles) + optional LLM rubric; generate → critique → revise, max N iterations. |
+| 5. HITL routing | `graph/draft_graph.py` | Low-confidence fields, band-suggested salary, unresolved errors, duplicates or tool failures pause the run (LangGraph interrupt) with precise questions; resumes days later from the checkpoint. |
+| 6. Reviewer copilot | `reviewer.py` | Summary, changes since last submission, risks, suggested comments; reviewer still decides. Review-open/decision timestamps are recorded. |
+| 7. Revision agent | `reviser.py` | Turns a rejection comment into a diff; author confirms before it's applied; content versioning (`versions[]`). |
+| 8. Q&A | `qa.py` + `server/src/routes/assistant.ts` | API computes the user's visible JDs/conversations; retrieval is filtered before ranking; refuses when evidence is missing. |
+| 9. Ops agent | `ops.py` + `server/src/analytics/queries.ts` | NL → one of 7 validated, parameterised queries (no free-form DB access); stuck-JD scan + drafted reminders HR confirms; scheduled daily digest. |
+| 10. Memory | `server/src/utils/memory.ts` | Per-user tone and benefits; per-department skills humans repeatedly add to AI drafts are learned on approval. |
 
 ---
 
-## Getting Started
+## Results (held-out test split, heuristic provider)
 
-### Prerequisites
+From `agent/evals/results/latest.md` — run `python -m evals.run_eval` to regenerate. Read the **honesty notes** in `agent/evals/README.md` first (synthetic cases; bugs were fixed during harness bring-up).
 
-- **Node.js** ≥ 18
-- **MongoDB** — either a local instance (`mongod` running on `27017`) or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster.
+| Metric (n=38) | Baseline v0 | Agent |
+|---|---|---|
+| Questions asked per JD | 7 | 1.4 |
+| Field accuracy | 58.3% | 98.7% |
+| Rule-based rubric (1–5) | 3.56 | 4.91 |
+| Compliance errors per JD | 1.63 | 0 |
+| Planted flaws remaining (bias, level/years contradictions) | 100% | 0% |
+| Injected instructions reaching the draft | 100% | 0% |
+| Pay-transparency compliant | 86.8% | 100% |
+| Bullets grounded in brief or a cited source | — | 100% |
+| Escalation precision / recall | — | 100% / 96.9% |
 
-### 1. Backend
+Critic: 100% precision/recall on 120 seeded flaws, 0% false alarms on 20 clean JDs. Retrieval (21 labelled queries): hybrid + reranker recall@5 1.0, nDCG@5 0.95; removing the reranker drops recall@5 to 0.93 and nDCG to 0.90. Security: 0/5 permission-leak probes.
+
+**What didn't work / open issues:** the escalation rate is ~80% because any band-suggested salary is confirmed with the author (safe, but chatty); vector-only retrieval matches hybrid on this small library, so the hybrid benefit is unproven at this scale; coverage is saturated because must-cover items come from the brief; LLM-mode numbers (cost, latency, judge calibration) need a real key and `--repeats 3`.
+
+---
+
+## User roles & demo accounts
+
+Seeded by `npm run seed` in `server/` (also seeds approved history, a rejected-then-approved JD and a JD stuck at HR so analytics have data).
+
+| Email | Password | Name | Role | Hierarchy |
+|---|---|---|---|---|
+| `hr@demo.com` | `Hr@123` | Sarah Johnson | `hr` | — |
+| `manager@demo.com` | `Mgr@123` | Michael Chen | `employee` | Manages Alex, Jamie, Taylor |
+| `employee@demo.com` | `Emp@123` | Alex Rivera | `employee` | Reports to Michael |
+| `peer@demo.com` | `Peer@123` | Jamie Wilson | `employee` | Reports to Michael |
+| `taylor@demo.com` | `Taylor@123` | Taylor Kim | `employee` | Reports to Michael |
+
+**A 2-minute demo:** log in as Alex → *New JD* → paste "We need a senior backend engineer on the platform team in Bangalore. They will own our payments APIs, mentor juniors and improve reliability. Must know Go, Postgres and Kubernetes." → answer the one question → watch the live agent steps → confirm the salary band → open *Evidence* and *Quality* → submit. Log in as Michael → *Downline JD Approvals* → *Review* (copilot) → send back with "Should be staff level and remote". Back as Alex → *Let the assistant propose fixes* → apply → resubmit. As Sarah → *Ops Agent*, *AI Quality*, *Ask the Assistant*.
+
+---
+
+## Getting started
+
+### Option A — Docker (everything)
 
 ```sh
+cp agent/.env.example agent/.env      # optional: add ANTHROPIC_API_KEY
+docker compose up --build
+docker compose exec api npm run seed:prod
+# web http://localhost:8080 · api http://localhost:5000 · agent http://localhost:8001/health
+```
+
+### Option B — local processes
+
+Prerequisites: Node ≥ 18, Python ≥ 3.11, MongoDB (local or Atlas).
+
+```sh
+# 1. agent service
+cd agent
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env            # set MONGODB_URI; ANTHROPIC_API_KEY optional
+set -a && source .env && set +a
+uvicorn app.main:app --port 8001
+
+# 2. API
 cd server
-cp .env.example .env
-# edit .env: set MONGODB_URI to your local or Atlas connection string
+cp .env.example .env            # MONGODB_URI, JWT_SECRET, AGENT_URL=http://localhost:8001, AGENT_SHARED_SECRET
+npm install && npm run seed && npm run dev      # http://localhost:5000
 
-npm install
-npm run seed     # wipes & re-seeds demo users + a sample JD
-npm run dev       # starts the API on http://localhost:5000
+# 3. web
+cp .env.example .env            # VITE_API_URL=http://localhost:5000/api
+npm install && npm run dev                       # http://localhost:8080
 ```
 
-### 2. Frontend
+Leave `AGENT_URL` empty to run the app exactly as before (rule-based question flow only).
+
+### Tests & evals
 
 ```sh
-# from the repo root
-cp .env.example .env
-# VITE_API_URL defaults to http://localhost:5000/api — only edit if your API runs elsewhere
-
-npm install
-npm run dev        # http://localhost:8080
+cd server && npm test                       # state machine, HMAC, proposal validation, analytics params
+cd agent && python -m pytest -q tests       # intake, critic, guardrails, retrieval, tools, graph, LLM retry/repair/fallback
+cd agent && python -m evals.run_eval --gate # golden-set eval with regression thresholds (what CI runs)
 ```
 
-Log in with any demo account above (or use "Sign up" to create a new one).
-
-### Production build
-
-```sh
-# frontend
-npm run build && npm run preview
-
-# backend
-cd server && npm run build && npm start
-```
+CI (`.github/workflows/ci.yml`) type-checks and builds the web app, runs API tests, runs agent tests and the eval gate, and uploads the eval report.
 
 ---
 
-## Environment Variables
+## Environment variables
 
-**`server/.env`**
+**`server/.env`** — `MONGODB_URI`, `JWT_SECRET` (required in production), `PORT`, `CLIENT_ORIGIN`, `AGENT_URL` (empty = legacy flow only), `AGENT_SHARED_SECRET` (must match the agent), `OPS_SCAN_MINUTES` (default 60, 0 disables), `OPS_STUCK_HOURS` (default 48).
 
-| Variable            | Required | Notes                                                        |
-| ------------------- | -------- | -------------------------------------------------------------|
-| `MONGODB_URI`        | yes      | Local or Atlas connection string.                            |
-| `JWT_SECRET`         | yes (required when `NODE_ENV=production`) | Long random string; used to sign session tokens. The server refuses to start in production without it. |
-| `PORT`                | no       | Defaults to `5000`.                                          |
-| `CLIENT_ORIGIN`       | no       | Comma-separated allowed CORS origins. Defaults to `http://localhost:8080`. |
-| `ANTHROPIC_API_KEY`   | no       | If set, JD summaries are additionally polished via the real Anthropic API. |
+**`agent/.env`** — `MONGODB_URI`, `AGENT_SHARED_SECRET`, `API_CALLBACK_URL`, `LLM_PROVIDER` (`auto`/`anthropic`/`heuristic`), `ANTHROPIC_API_KEY`, `MODEL_LARGE`, `MODEL_SMALL`, `PRICE_*` (for cost tracking — set to your contract prices), `EMBEDDINGS_PROVIDER` (`hashing`/`voyage`) + `VOYAGE_API_KEY`, `RETRIEVAL_MODE`, `USE_RERANKER`, budgets (`MAX_TOKENS_PER_RUN`, `DAILY_TOKEN_BUDGET_PER_USER`, `MAX_TOOL_CALLS`, `CRITIC_MAX_ITERS`, `INTAKE_MAX_TURNS`), `CONFIDENCE_THRESHOLD`, `PAY_TRANSPARENCY_REQUIRED`, `PROMPT_VERSION`.
 
-**`.env` (repo root, frontend)**
-
-| Variable        | Required | Notes                                   |
-| ---------------- | -------- | ---------------------------------------|
-| `VITE_API_URL`    | no       | Defaults to `http://localhost:5000/api`.|
+**`.env`** (web) — `VITE_API_URL`.
 
 ---
 
-## Deployment
+## API overview
 
-The frontend and API deploy independently; both are standard Node projects with no hosting-provider dependency.
+All routes under `/api`; JWT required except auth and `/internal/*` (HMAC).
 
-- **Frontend** — static SPA. Build with `npm run build` and serve the `dist/` directory from any static host. Set `VITE_API_URL` at **build time** to the public API URL, and configure the host to rewrite all unknown paths to `index.html` (client-side routing).
-- **API** — build with `npm run build` and run `npm start` inside `server/`. Set `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET`, and `CLIENT_ORIGIN` (the deployed frontend origin, for CORS).
-
----
-
-## API Overview
-
-All routes are namespaced under `/api` and (except `/auth/register` and `/auth/login`) require `Authorization: Bearer <token>`.
-
-| Resource      | Routes |
-| ------------- | ------ |
-| Auth          | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
-| Users         | `GET /users`, `GET /users/subordinates`, `GET /users/:id` |
-| Job descriptions | `GET/POST /jds`, `GET/PATCH /jds/:id`, `POST /jds/:id/agent-message`, `POST /jds/:id/submit`, `POST /jds/:id/approve`, `POST /jds/:id/reject`, `POST /jds/:id/mention`, `POST /jds/:id/peer-respond` |
-| Chat          | `GET/POST /chat/conversations`, `GET/POST /chat/conversations/:id/messages` |
+| Resource | Routes |
+|---|---|
+| Auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
+| Users | `GET /users`, `GET /users/subordinates`, `GET /users/:id` |
+| JDs | `GET/POST /jds`, `GET/PATCH /jds/:id`, `GET /jds/:id/versions`, `POST /jds/:id/agent-message`, `GET /jds/:id/runs/:runId`, `DELETE /jds/:id/agent-thread`, `POST /jds/:id/critique`, `POST /jds/:id/submit`, `POST /jds/:id/approve`, `POST /jds/:id/reject`, `GET /jds/:id/copilot`, `POST /jds/:id/revise`, `POST /jds/:id/revise/apply`, `POST /jds/:id/mention`, `POST /jds/:id/peer-respond` |
+| Assistant | `POST /assistant/ask` |
+| Me | `GET/PUT /me/preferences` |
+| Chat | `GET/POST /chat/conversations`, `GET/POST /chat/conversations/:id/messages` |
 | Notifications | `GET /notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all` |
-| Admin (HR only) | `GET /admin/overview`, `POST /admin/remind` |
+| Admin (HR) | `GET /admin/overview`, `POST /admin/remind`, `GET /admin/analytics/catalog`, `POST /admin/analytics/run`, `POST /admin/ops/ask`, `GET /admin/ops/stuck`, `POST /admin/ops/send-reminders`, `GET /admin/metrics` |
+| Internal | `POST /internal/agent-callback` (HMAC-signed by the agent) |
+
+Agent service (internal only, HMAC): `POST /threads/:id/messages`, `GET /runs/:id`, `GET /threads/:id/state`, `DELETE /threads/:id`, `POST /critique`, `POST /review`, `POST /revise`, `POST /qa`, `POST /ops/route`, `POST /ops/reminders`, `POST /index/jd`, `POST /index/message`, `POST /index/sync`, `GET /metrics/summary`, `GET /runs`, `GET /health`.
 
 ---
 
-## Design System
+## Reliability & safety
 
-New palette (`src/index.css`), all HSL tokens consumed through Tailwind:
-
-- **Signal Indigo** `#4338CA` — primary actions, links, active nav state.
-- **Ink** `#14152B` — sidebar / hero background.
-- **Emerald** `#10B981` — approved / success.
-- **Amber** `#F59E0B` — pending / warning.
-- **Rose** `#E11D48` — rejected / destructive.
-- **Paper** `#F7F7FB` — light-mode background.
-
-Type: **Space Grotesk** for headings/display, **Inter** for body copy, **JetBrains Mono** for status labels, timestamps, and IDs.
-
-**Signature element:** the JD **pipeline stepper** (`src/components/workspace/PipelineStepper.tsx`) — a small horizontal stage tracker (Draft → Manager → HR → Approved) reused on every JD card, the conversation panel, and approval lists, so the JD's position in its lifecycle is always visible at a glance.
-
-Dark mode is a full token set (not just inverted grays) and toggles from the header sun/moon icon.
+| Concern | Mechanism |
+|---|---|
+| Invalid output | Pydantic schemas + forced-tool structured output, one repair prompt, other-model retry, deterministic fallback; zod whitelist in the API (status/owner fields can never be written by AI). |
+| Provider failure | Timeouts, exponential backoff, model fallback, deterministic agents, and the legacy flow if the agent service is unreachable. |
+| Prompt injection | Untrusted text is wrapped as `<data>`; sentences containing instructions are dropped before extraction; tool allow-lists per node; no tool can write approvals. |
+| PII | Emails, phones, IDs and secrets redacted before anything is written to traces; user ids are hashed. |
+| Runaway cost/loops | Max graph steps, tool-call cap, per-run token budget, per-user daily budget (degrades to deterministic agents). |
+| Duplicate actions | Idempotency keys on run creation; tool-result cache per run; run results applied once (`appliedRunIds`). |
+| Authorization | State machine in `server/src/utils/stateMachine.ts`; Q&A retrieval filtered to ids the API authorises; every AI action is a recorded run, and applied revisions are attributed in `history`. |
 
 ---
 
-## Project Structure
+## Project structure
 
 ```text
-src/
-├── App.tsx, main.tsx
-├── index.css                      # design tokens + component classes
-├── lib/api.ts                     # fetch client
-├── types/index.ts
-├── context/AuthContext.tsx
-├── hooks/
-│   ├── useJDs.ts                  # JD CRUD, agent messages, approvals, mentions
-│   └── useWorkspace.ts            # users, notifications, chat, admin overview
-├── components/
-│   ├── Login.tsx                  # split-screen sign in / sign up
-│   ├── ProtectedRoute.tsx
-│   ├── ui/                        # shadcn primitives
-│   └── workspace/
-│       ├── AppShell.tsx           # sidebar + topbar + notifications + dark mode
-│       ├── PipelineStepper.tsx    # signature stage tracker
-│       ├── StatusBadge.tsx
-│       ├── JdConversation.tsx     # AI agent chat + draft editor + mentions + submit
-│       ├── ApprovalsList.tsx      # shared by HR review, manager downline, peer approvals
-│       ├── ChatPanel.tsx          # real conversations + messages
-│       └── AdminOverview.tsx      # HR stats + employee table + reminders
-└── pages/Dashboard.tsx            # role-based nav + view switch
-
+src/                                 React app
+  components/workspace/JdConversation.tsx   agent chat, live steps, interrupts, editor, quality, evidence, versions, revision
+  components/workspace/ApprovalsList.tsx    full JD view + reviewer copilot
+  components/workspace/{AskPanel,OpsPanel,AiMetricsPanel}.tsx
+  components/workspace/agent/*              Markdown, AgentProgress, QualityPanel, EvidencePanel, Copilot, Revision, Versions, Preferences, ResultChart
 server/src/
-├── index.ts                       # Express app entry
-├── db.ts                          # Mongoose connection
-├── seed.ts                        # demo data
-├── models/                        # User, JobDescription, Conversation, Message, Notification
-├── middleware/auth.ts             # JWT verification
-├── routes/                        # auth, users, jds, chat, notifications, admin
-└── utils/jdAgent.ts, notify.ts, jwt.ts
+  utils/stateMachine.ts aiApply.ts agentClient.ts memory.ts jdHelpers.ts textMetrics.ts opsScheduler.ts jdAgent.ts (Baseline v0)
+  analytics/queries.ts metrics.ts
+  routes/ jds assistant me admin internal chat auth users notifications
+  models/ JobDescription (versions, aiRuns, aiMeta, reviewEvents) Preference Notification …
+  tests/                              vitest
+agent/
+  app/ main.py runs.py config.py schemas.py llm.py tools.py guard.py security.py knowledge.py indexer.py
+  app/agents/ intake generator critic reviewer reviser qa ops
+  app/graph/draft_graph.py           LangGraph workflow
+  app/rag/ embed bm25 store retriever
+  data/                               skills taxonomy, salary bands, inclusive lexicon, role library, style guide
+  evals/                              golden set builder, harness, thresholds, results
+  tests/                              pytest
 ```
 
----
-
-## Notes & Limitations
-
-- The **AI Agent** is a deterministic question flow by default (title → department → summary → responsibilities → qualifications → skills → salary/type) so the app works with zero external API keys. Set `ANTHROPIC_API_KEY` in `server/.env` to additionally polish the generated summary through the real Anthropic API.
-- Chat is polling-based (refetch every ~10–15s), not WebSocket — simplest reliable option without adding infrastructure. Swapping in Socket.io or MongoDB change streams later is a drop-in change to `useWorkspace.ts` / `server/src/routes/chat.ts`.
-- Passwords are hashed with bcrypt; sessions are stateless JWTs (7-day expiry) — there's no refresh-token rotation yet.
-- Employee sign-up defaults new managers to no direct reports; wire `reportsTo` via the `/auth/register` `reportsTo` field or update it directly in MongoDB if you need deeper org charts than the seed data.
+See `ARCHITECTURE.md` for the developer walkthrough.

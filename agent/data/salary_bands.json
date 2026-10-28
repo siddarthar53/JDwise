@@ -1,0 +1,77 @@
+{
+  "_comment": "Illustrative internal compensation bands (annual base). Replace with your company's real bands. Amounts are [min, max].",
+  "regions": {
+    "india": {"currency": "INR", "unit": "LPA", "cities": ["bangalore", "bengaluru", "hyderabad", "pune", "chennai", "mumbai", "delhi", "gurgaon", "gurugram", "noida", "kolkata", "ahmedabad", "india"]},
+    "us": {"currency": "USD", "unit": "k", "cities": ["san francisco", "new york", "seattle", "austin", "boston", "los angeles", "chicago", "denver", "us", "usa", "united states", "california", "colorado", "washington"]},
+    "uk": {"currency": "GBP", "unit": "k", "cities": ["london", "manchester", "uk", "united kingdom", "edinburgh"]},
+    "eu": {"currency": "EUR", "unit": "k", "cities": ["berlin", "amsterdam", "paris", "dublin", "madrid", "lisbon", "munich", "europe"]}
+  },
+  "pay_transparency_locations": ["california", "san francisco", "los angeles", "new york", "colorado", "denver", "washington", "seattle", "illinois", "chicago", "massachusetts", "boston", "us", "usa", "united states", "eu", "europe", "berlin", "amsterdam", "paris", "dublin", "madrid", "lisbon", "munich"],
+  "families": {
+    "engineering": {
+      "us":    {"intern": [45, 70], "junior": [95, 125], "mid": [120, 155], "senior": [155, 200], "staff": [195, 250], "principal": [235, 300], "lead": [170, 220], "manager": [180, 235], "director": [230, 300]},
+      "india": {"intern": [4, 8], "junior": [8, 15], "mid": [15, 28], "senior": [28, 45], "staff": [45, 70], "principal": [65, 95], "lead": [35, 55], "manager": [40, 65], "director": [65, 110]},
+      "uk":    {"intern": [25, 32], "junior": [40, 55], "mid": [55, 75], "senior": [75, 100], "staff": [95, 125], "principal": [115, 150], "lead": [85, 110], "manager": [90, 120], "director": [120, 160]},
+      "eu":    {"intern": [25, 35], "junior": [45, 60], "mid": [58, 78], "senior": [75, 100], "staff": [95, 125], "principal": [115, 150], "lead": [85, 110], "manager": [90, 120], "director": [120, 165]}
+    },
+    "data": {
+      "us":    {"intern": [45, 70], "junior": [90, 120], "mid": [115, 150], "senior": [150, 195], "staff": [190, 240], "principal": [230, 290], "lead": [165, 210], "manager": [175, 225], "director": [220, 290]},
+      "india": {"intern": [4, 8], "junior": [7, 14], "mid": [14, 26], "senior": [26, 42], "staff": [42, 65], "principal": [60, 90], "lead": [32, 50], "manager": [38, 60], "director": [60, 100]},
+      "uk":    {"intern": [25, 32], "junior": [38, 52], "mid": [52, 72], "senior": [70, 95], "staff": [90, 120], "principal": [110, 145], "lead": [80, 105], "manager": [85, 115], "director": [115, 155]},
+      "eu":    {"intern": [25, 35], "junior": [42, 58], "mid": [55, 75], "senior": [72, 95], "staff": [90, 120], "principal": [110, 145], "lead": [80, 105], "manager": [85, 115], "director": [115, 160]}
+    },
+    "design": {
+      "us":    {"intern": [40, 60], "junior": [75, 100], "mid": [100, 130], "senior": [130, 170], "staff": [165, 210], "principal": [195, 245], "lead": [145, 185], "manager": [155, 200], "director": [195, 255]},
+      "india": {"intern": [3, 6], "junior": [6, 12], "mid": [12, 22], "senior": [22, 36], "staff": [35, 55], "principal": [50, 75], "lead": [28, 42], "manager": [32, 50], "director": [50, 85]},
+      "uk":    {"intern": [22, 28], "junior": [32, 45], "mid": [45, 60], "senior": [60, 80], "staff": [78, 100], "principal": [95, 120], "lead": [70, 90], "manager": [75, 95], "director": [95, 130]},
+      "eu":    {"intern": [22, 30], "junior": [38, 50], "mid": [48, 65], "senior": [62, 82], "staff": [78, 100], "principal": [95, 120], "lead": [70, 90], "manager": [75, 95], "director": [95, 135]}
+    },
+    "product": {
+      "us":    {"intern": [45, 65], "junior": [95, 120], "mid": [120, 155], "senior": [155, 195], "staff": [190, 240], "principal": [225, 285], "lead": [170, 215], "manager": [180, 230], "director": [225, 295]},
+      "india": {"intern": [4, 8], "junior": [10, 18], "mid": [18, 32], "senior": [32, 50], "staff": [48, 72], "principal": [65, 95], "lead": [40, 60], "manager": [45, 70], "director": [70, 115]},
+      "uk":    {"intern": [25, 32], "junior": [42, 55], "mid": [55, 75], "senior": [75, 98], "staff": [95, 122], "principal": [115, 145], "lead": [85, 108], "manager": [90, 115], "director": [118, 158]},
+      "eu":    {"intern": [25, 35], "junior": [45, 60], "mid": [58, 78], "senior": [75, 98], "staff": [92, 120], "principal": [112, 145], "lead": [85, 108], "manager": [88, 115], "director": [118, 162]}
+    },
+    "marketing": {
+      "us":    {"intern": [35, 50], "junior": [55, 75], "mid": [75, 100], "senior": [100, 135], "staff": [130, 165], "principal": [155, 195], "lead": [115, 150], "manager": [120, 160], "director": [160, 220]},
+      "india": {"intern": [2.5, 5], "junior": [4, 8], "mid": [8, 15], "senior": [15, 26], "staff": [25, 38], "principal": [35, 55], "lead": [20, 32], "manager": [24, 40], "director": [40, 70]},
+      "uk":    {"intern": [20, 26], "junior": [26, 34], "mid": [34, 48], "senior": [48, 65], "staff": [62, 80], "principal": [75, 95], "lead": [55, 72], "manager": [58, 78], "director": [80, 115]},
+      "eu":    {"intern": [20, 28], "junior": [32, 42], "mid": [42, 56], "senior": [55, 72], "staff": [68, 86], "principal": [80, 100], "lead": [62, 80], "manager": [65, 85], "director": [88, 125]}
+    },
+    "sales": {
+      "us":    {"intern": [35, 50], "junior": [50, 70], "mid": [70, 95], "senior": [95, 130], "staff": [125, 160], "principal": [150, 190], "lead": [110, 145], "manager": [120, 165], "director": [160, 225]},
+      "india": {"intern": [2.5, 5], "junior": [4, 8], "mid": [8, 14], "senior": [14, 24], "staff": [22, 35], "principal": [32, 50], "lead": [18, 30], "manager": [22, 38], "director": [38, 70]},
+      "uk":    {"intern": [20, 26], "junior": [26, 34], "mid": [34, 46], "senior": [46, 62], "staff": [60, 78], "principal": [72, 92], "lead": [52, 70], "manager": [56, 76], "director": [78, 112]},
+      "eu":    {"intern": [20, 28], "junior": [30, 40], "mid": [40, 54], "senior": [52, 70], "staff": [66, 84], "principal": [78, 98], "lead": [60, 78], "manager": [62, 82], "director": [85, 122]}
+    },
+    "people": {
+      "us":    {"intern": [35, 50], "junior": [55, 72], "mid": [72, 95], "senior": [95, 125], "staff": [120, 150], "principal": [140, 175], "lead": [105, 135], "manager": [115, 150], "director": [150, 205]},
+      "india": {"intern": [2.5, 5], "junior": [4, 7], "mid": [7, 13], "senior": [13, 22], "staff": [20, 32], "principal": [30, 45], "lead": [16, 26], "manager": [20, 34], "director": [34, 60]},
+      "uk":    {"intern": [20, 26], "junior": [26, 33], "mid": [33, 45], "senior": [45, 60], "staff": [58, 74], "principal": [70, 88], "lead": [50, 66], "manager": [54, 72], "director": [75, 105]},
+      "eu":    {"intern": [20, 28], "junior": [30, 40], "mid": [40, 52], "senior": [50, 66], "staff": [62, 78], "principal": [74, 92], "lead": [56, 72], "manager": [60, 78], "director": [80, 115]}
+    },
+    "finance": {
+      "us":    {"intern": [40, 55], "junior": [60, 80], "mid": [80, 105], "senior": [105, 140], "staff": [135, 170], "principal": [160, 200], "lead": [120, 155], "manager": [130, 170], "director": [170, 235]},
+      "india": {"intern": [3, 6], "junior": [5, 9], "mid": [9, 16], "senior": [16, 28], "staff": [26, 40], "principal": [38, 58], "lead": [22, 34], "manager": [26, 42], "director": [42, 75]},
+      "uk":    {"intern": [22, 28], "junior": [30, 38], "mid": [38, 52], "senior": [52, 70], "staff": [68, 86], "principal": [82, 102], "lead": [60, 78], "manager": [64, 84], "director": [88, 125]},
+      "eu":    {"intern": [22, 30], "junior": [34, 44], "mid": [44, 58], "senior": [58, 76], "staff": [72, 90], "principal": [86, 108], "lead": [66, 84], "manager": [70, 90], "director": [95, 135]}
+    },
+    "operations": {
+      "us":    {"intern": [35, 48], "junior": [50, 68], "mid": [68, 90], "senior": [90, 120], "staff": [115, 145], "principal": [135, 170], "lead": [100, 130], "manager": [110, 145], "director": [145, 200]},
+      "india": {"intern": [2.5, 5], "junior": [4, 7], "mid": [7, 12], "senior": [12, 20], "staff": [18, 30], "principal": [28, 42], "lead": [15, 24], "manager": [18, 32], "director": [32, 58]},
+      "uk":    {"intern": [20, 26], "junior": [25, 32], "mid": [32, 43], "senior": [43, 58], "staff": [55, 70], "principal": [66, 84], "lead": [48, 63], "manager": [52, 68], "director": [72, 100]},
+      "eu":    {"intern": [20, 28], "junior": [29, 38], "mid": [38, 50], "senior": [48, 63], "staff": [60, 75], "principal": [72, 90], "lead": [54, 70], "manager": [58, 75], "director": [78, 110]}
+    }
+  },
+  "department_family": {
+    "engineering": "engineering", "platform": "engineering", "infrastructure": "engineering", "devops": "engineering", "qa": "engineering", "security": "engineering",
+    "data": "data", "analytics": "data", "data science": "data", "machine learning": "data", "ai": "data",
+    "design": "design", "ux": "design", "product design": "design",
+    "product": "product",
+    "marketing": "marketing", "growth": "marketing", "brand": "marketing", "communications": "marketing",
+    "sales": "sales", "business development": "sales", "customer success": "sales", "support": "operations",
+    "people ops": "people", "people": "people", "hr": "people", "human resources": "people", "talent": "people", "recruiting": "people",
+    "finance": "finance", "accounting": "finance", "legal": "finance",
+    "operations": "operations", "ops": "operations", "general": "operations"
+  }
+}

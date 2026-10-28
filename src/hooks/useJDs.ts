@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { JobDescription } from '@/types';
+import { AgentRunStatus, Critique, JdVersion, JobDescription, ReviewReport, RevisionProposal } from '@/types';
 
 export function useJDs() {
   return useQuery({
@@ -29,7 +29,7 @@ export function useAgentMessage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, message }: { id: string; message: string }) =>
-      api.post<{ jd: JobDescription; done: boolean }>(`/jds/${id}/agent-message`, { message }),
+      api.post<{ jd: JobDescription; done?: boolean; runId?: string; mode: 'agent' | 'legacy' }>(`/jds/${id}/agent-message`, { message }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['jd', vars.id] });
       qc.invalidateQueries({ queryKey: ['jds'] });
@@ -106,6 +106,79 @@ export function usePeerRespond() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['jds'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------- agentic additions
+
+export function useAgentRun(jdId?: string, runId?: string | null) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ['agent-run', jdId, runId],
+    queryFn: async () => {
+      const r = await api.get<{ run: AgentRunStatus; applied: boolean }>(`/jds/${jdId}/runs/${runId}`);
+      if (r.applied) {
+        qc.invalidateQueries({ queryKey: ['jds'] });
+        qc.invalidateQueries({ queryKey: ['jd', jdId] });
+      }
+      return r;
+    },
+    enabled: !!jdId && !!runId,
+    refetchInterval: (q) => (q.state.data?.applied ? false : 700),
+  });
+}
+
+export function useResetThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<{ jd: JobDescription }>(`/jds/${id}/agent-thread`).then((r) => r.jd),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jds'] }),
+  });
+}
+
+export function useCritique() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<{ critique: Critique }>(`/jds/${id}/critique`).then((r) => r.critique),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jds'] }),
+  });
+}
+
+export function useVersions(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['versions', id],
+    queryFn: () => api.get<{ versions: JdVersion[] }>(`/jds/${id}/versions`).then((r) => r.versions),
+    enabled: !!id && enabled,
+  });
+}
+
+export function useCopilot(id?: string, enabled = false) {
+  return useQuery({
+    queryKey: ['copilot', id],
+    queryFn: () => api.get<{ report: ReviewReport }>(`/jds/${id}/copilot`).then((r) => r.report),
+    enabled: !!id && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useRevise() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
+      api.post<{ proposal: RevisionProposal }>(`/jds/${id}/revise`, { comment }).then((r) => r.proposal),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jds'] }),
+  });
+}
+
+export function useApplyRevision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fields }: { id: string; fields?: string[] }) =>
+      api.post<{ jd: JobDescription }>(`/jds/${id}/revise/apply`, { fields }).then((r) => r.jd),
+    onSuccess: (jd) => {
+      qc.invalidateQueries({ queryKey: ['jds'] });
+      qc.invalidateQueries({ queryKey: ['versions', jd._id] });
     },
   });
 }

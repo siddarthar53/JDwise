@@ -1,0 +1,48 @@
+# One command to run everything:  docker compose up --build
+# then seed demo data:              docker compose exec api npm run seed:prod
+services:
+  mongo:
+    image: mongo:7
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      retries: 10
+
+  agent:
+    build: ./agent
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/jd-platform
+      AGENT_SHARED_SECRET: ${AGENT_SHARED_SECRET:-dev-agent-secret-change-me}
+      API_CALLBACK_URL: http://api:5000/api/internal/agent-callback
+      LLM_PROVIDER: ${LLM_PROVIDER:-auto}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHECKPOINT_PATH: /app/.state/checkpoints.sqlite
+    volumes: [agent-state:/app/.state]
+    depends_on:
+      mongo: { condition: service_healthy }
+
+  api:
+    build: ./server
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/jd-platform
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please}
+      CLIENT_ORIGIN: http://localhost:8080
+      AGENT_URL: http://agent:8001
+      AGENT_SHARED_SECRET: ${AGENT_SHARED_SECRET:-dev-agent-secret-change-me}
+    ports: ["5000:5000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      agent: { condition: service_started }
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args: { VITE_API_URL: "http://localhost:5000/api" }
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  mongo-data:
+  agent-state:

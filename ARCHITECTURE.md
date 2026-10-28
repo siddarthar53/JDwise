@@ -1,4 +1,4 @@
-# Rolewrite (JD Platform) — Developer Onboarding Guide
+# JDwise (JD Platform) — Developer Onboarding Guide
 
 This document is for a new developer joining the project. It complements the
 `README.md` (which covers setup/run commands) by explaining **how the app
@@ -105,12 +105,9 @@ This is the workflow every new developer should internalize first.
    sets `status: 'approved'` (a terminal state) and notifies the author.
    Rejecting sets `status: 'rejected'` and notifies the author.
 
-5. **`approved` / `rejected`** — Terminal states. A rejected JD is not
-   automatically reopened — in the current implementation the employee would
-   need to keep editing/resubmitting the same JD document (there's no
-   "resubmit" endpoint separate from `submit`, and `submit` doesn't check
-   the current status before transitioning — worth being careful about if
-   you touch this route).
+5. **`approved` / `rejected`** — `approved` is terminal. A `rejected` JD is editable again by its owner and can be **resubmitted** (`history` records `resubmitted`); the author can ask the revision agent to turn the reviewer's comment into a proposed diff first.
+
+All transitions go through `server/src/utils/stateMachine.ts` (`transition(action, ctx)`), which is unit-tested in `server/tests/stateMachine.test.ts`. Route handlers never assign `status` directly, and `submit` now rejects JDs that are already in review or approved.
 
 **Where "manager" comes from:** there is no separate "manager" role. Any user
 whose `_id` appears as someone else's `reportsTo` is treated as a manager for
@@ -125,38 +122,17 @@ timeline UI and is the closest thing the app has to activity logging.
 
 ---
 
-## 4. The "AI Agent" conversation (JD drafting)
+## 4. The AI drafting agent
 
-This is a **deterministic, rule-based question flow**, not a live LLM chat,
-by default. It lives in `server/src/utils/jdAgent.ts`.
+Drafting is done by the Python **agent service** (`agent/`), a FastAPI app running a LangGraph workflow per JD (thread id = JD id). The Express API stays the source of truth.
 
-- `STEPS` is a fixed array of 7 prompts: title → department → summary →
-  responsibilities → qualifications → skills → salary/type.
-- `firstPrompt()` returns `STEPS[0]` and is used when a JD is first created.
-- Each time the frontend calls `POST /api/jds/:id/agent-message` with the
-  user's free-text answer, `processAnswer(step, userText)` runs:
-  - It patches the relevant JD field (splitting comma/newline-separated
-    lists for responsibilities/qualifications/skills via `splitList`).
-  - It advances `conversationStep`.
-  - It returns the next question, or — once `nextStep >= STEPS.length` — a
-    closing message plus a generated Markdown summary of the full draft
-    (`summarizeDraft`).
-- The route handler (`routes/jds.ts` → `/agent-message`) pushes both the
-  user's message and the assistant's reply onto `conversation[]` and saves.
+**Request flow.** `POST /api/jds/:id/agent-message` saves the user turn, then calls the agent (`POST /threads/:jdId/messages`, HMAC-signed, idempotency key = JD id + turn index) with context: current JD fields, org context and the author's preferences. The agent returns a `run_id` immediately; the JD gets `agentState: 'running'` and `activeRunId`. The UI polls `GET /api/jds/:id/runs/:runId`, which shows the run's live step events. When the run settles the agent POSTs a signed callback to `/api/internal/agent-callback`; `utils/aiApply.ts` validates the proposal with zod (content fields only), applies it once (`appliedRunIds`), snapshots a `versions[]` entry and sets `agentState` to `collecting` (it asked a question), `needs_input` (human gate) or `ready`. The poll endpoint applies too, as a backstop.
 
-**Optional real-LLM polish:** if `ANTHROPIC_API_KEY` is set in
-`server/.env`, `polishWithAnthropic()` can send the rough summary to the real
-Anthropic Messages API (model `claude-sonnet-4-6`) to smooth the prose. This
-is opt-in and the app is fully functional without it — treat this as a
-"nice-to-have enhancement" layer on top of the deterministic flow, not the
-core mechanism. If you're debugging "why did the agent say something odd",
-look at `jdAgent.ts` first, not an LLM prompt.
+**The graph** (`agent/app/graph/draft_graph.py`): `intake → (ask_user ⟲) → retrieve → plan_tools → generate → validate → critic ⟲ revise → route → (human_gate → apply_answer → retrieve …) → finalize`. Interrupts are persisted in a SQLite checkpointer, so a run paused for the author's answer resumes whenever they reply. A message after `finalize` is treated as a refinement ("make it senior").
 
-**Where this shows up in the UI:** `src/components/workspace/JdConversation.tsx`
-renders the chat-style conversation and the live-editable draft side by
-side, and is reused for every employee's own JD-building flow.
+**Fallbacks.** No `ANTHROPIC_API_KEY` → every node uses its deterministic implementation. Agent service unreachable or `AGENT_URL` empty → the API uses the original 7-question script in `utils/jdAgent.ts` (`agentState: 'legacy'`), which is also Baseline v0 in the evals.
 
----
+**Where this shows up in the UI:** `JdConversation.tsx` (chat with live steps, review questions, editor with confidence hints, quality panel, evidence/citations, version history, revision dialog).
 
 ## 5. Roles, permissions, and who can see what
 
@@ -314,10 +290,8 @@ never returned by any endpoint — see `publicUser()` helpers in `auth.ts` /
 
 ## 9. Things a new developer should know before changing anything
 
-- **Status transitions are enforced server-side**, in `routes/jds.ts`, not
-  just hidden in the UI. If you add a new status or approval stage, update
-  the checks in `/submit`, `/approve`, and `/reject` together — they're not
-  centralized in one state-machine function today.
+- **Status transitions are enforced server-side** in `utils/stateMachine.ts`.
+  If you add a status or approval stage, change it there and in its tests.
 - **Peer approvals never gate the manager/HR pipeline.** Don't assume a JD
   needs all `peerApprovals` resolved before it can move to `approved` —
   currently it doesn't.
@@ -325,10 +299,9 @@ never returned by any endpoint — see `publicUser()` helpers in `auth.ts` /
   badge, approval queues updating for other users) is polling +
   react-query cache invalidation. If two people are in the room, they will
   see each other's changes with up to ~10–20s of lag, not instantly.
-- **The AI agent is not calling an LLM by default.** Don't go looking for a
-  prompt/response loop in `jdAgent.ts` for the core question flow — it's a
-  plain switch-statement over a fixed step index. The Anthropic call is a
-  separate, optional cosmetic pass gated by an env var.
+- **AI never writes status.** Agent output reaches Mongo only through
+  `utils/aiApply.ts` (zod whitelist). Keep it that way: add new AI-written
+  fields to `ProposalFields`, never bypass it.
 - **"Manager" is derived, not stored.** Don't add a `manager` enum value to
   `User.role` — the whole app keys off `reportsTo` pointing at you.
 - **`.env.example`** exists at both repo root (frontend, just `VITE_API_URL`)
@@ -358,3 +331,23 @@ never returned by any endpoint — see `publicUser()` helpers in `auth.ts` /
 ## 11. Related docs
 
 - `README.md` — setup, environment variables, demo accounts, run commands.
+
+---
+
+## 12. The agentic layer at a glance
+
+| Concern | Code |
+|---|---|
+| LLM access (structured output, retries, repair, model fallback, prompt caching, cost) | `agent/app/llm.py` |
+| Per-run tracing, budgets, token/cost accounting | `agent/app/runctx.py`, `agent/app/runs.py` (`agent_runs` collection) |
+| Prompt-injection & PII guards | `agent/app/guard.py` |
+| Tools (allow-list, schemas, timeouts, idempotency) | `agent/app/tools.py` |
+| RAG index & retrieval | `agent/app/rag/*`, `agent/app/indexer.py` (`kb_chunks` collection) |
+| Agents | `agent/app/agents/{intake,generator,critic,reviewer,reviser,qa,ops}.py` |
+| Company data (bands, taxonomy, lexicon, role library, style guide) | `agent/data/` |
+| Analytics query layer (ops agent executes only these) | `server/src/analytics/queries.ts` |
+| Business metrics (AI vs legacy cohorts) | `server/src/analytics/metrics.ts` |
+| Memory | `server/src/utils/memory.ts`, `models/Preference.ts` |
+| Evals & CI gate | `agent/evals/`, `.github/workflows/ci.yml` |
+
+**Adding an agent capability:** write the deterministic version first (so it works offline and has a baseline), add the LLM version behind `llm.structured(...)` with a Pydantic schema, record it as a run (`runs.run_sync`), add tests, then add an eval metric before claiming it helps.

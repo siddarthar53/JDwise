@@ -30,3 +30,14 @@ dist-ssr
 server/.env
 server/.env.*
 !server/.env.example
+
+# agent service
+agent/.state/
+__pycache__/
+*.pyc
+.pytest_cache/
+agent/evals/results/*
+!agent/evals/results/latest.md
+!agent/evals/results/latest.json
+server/.env
+.env

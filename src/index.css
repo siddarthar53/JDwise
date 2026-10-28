@@ -22,6 +22,10 @@
 
     /* Primary - Signal Indigo */
     --primary: 244 58% 51%;
+    /* chart series (validated: OKLCH lightness band, CVD separation, contrast) */
+    --chart-1: #4F46E5;
+    --chart-2: #0D9488;
+    --chart-3: #D97706;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 244 55% 42%;
 
@@ -89,6 +93,9 @@
     --popover-foreground: 240 20% 94%;
 
     --primary: 244 70% 68%;
+    --chart-1: #7C83F0;
+    --chart-2: #0F9F90;
+    --chart-3: #C98418;
     --primary-foreground: 240 30% 10%;
     --primary-hover: 244 70% 75%;
 

@@ -7,6 +7,9 @@ import JdConversation from '@/components/workspace/JdConversation';
 import ApprovalsList from '@/components/workspace/ApprovalsList';
 import ChatPanel from '@/components/workspace/ChatPanel';
 import AdminOverview from '@/components/workspace/AdminOverview';
+import AskPanel from '@/components/workspace/AskPanel';
+import OpsPanel from '@/components/workspace/OpsPanel';
+import AiMetricsPanel from '@/components/workspace/AiMetricsPanel';
 import {
   MessageSquare,
   FileCheck,
@@ -14,6 +17,9 @@ import {
   Users,
   BarChart3,
   ClipboardCheck,
+  Search,
+  Timer,
+  Activity,
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -35,6 +41,9 @@ const Dashboard = () => {
       { key: 'peer-approval', label: 'Peer Approvals', icon: <UserCheck className="h-4 w-4" /> },
       { key: 'chat', label: 'Chat', icon: <Users className="h-4 w-4" /> },
       { key: 'dashboard', label: 'Company Overview', icon: <BarChart3 className="h-4 w-4" /> },
+      { key: 'ops', label: 'Ops Agent', icon: <Timer className="h-4 w-4" /> },
+      { key: 'ai-metrics', label: 'AI Quality', icon: <Activity className="h-4 w-4" /> },
+      { key: 'ask', label: 'Ask the Assistant', icon: <Search className="h-4 w-4" /> },
     ],
     [jds],
   );
@@ -53,6 +62,7 @@ const Dashboard = () => {
     }
     items.push({ key: 'peer-mentions', label: 'Peer Mentions', icon: <UserCheck className="h-4 w-4" /> });
     items.push({ key: 'chat', label: 'Chat', icon: <Users className="h-4 w-4" /> });
+    items.push({ key: 'ask', label: 'Ask the Assistant', icon: <Search className="h-4 w-4" /> });
     return items;
   }, [isManager, jds]);
 
@@ -62,7 +72,10 @@ const Dashboard = () => {
   if (!user) return null;
 
   const titleFor: Record<string, { title: string; subtitle?: string }> = {
-    conversation: { title: 'AI Agent Conversation', subtitle: 'Answer a few questions and the assistant drafts the JD with you.' },
+    conversation: { title: 'AI Agent Conversation', subtitle: 'Describe the role; the agent asks only what is missing, drafts from approved JDs and checks compliance.' },
+    ops: { title: 'Ops Agent', subtitle: 'Ask pipeline questions in plain English and unblock stuck JDs.' },
+    'ai-metrics': { title: 'AI Quality', subtitle: 'Agent reliability, cost and business impact versus the manual baseline.' },
+    ask: { title: 'Ask the Assistant', subtitle: 'Questions over the JDs, reviewer feedback and chats you can access.' },
     review: { title: 'Review & Approve JDs', subtitle: 'Job descriptions waiting on HR sign-off.' },
     'peer-approval': { title: 'Peer Approvals', subtitle: 'Everything you have been tagged on across the company.' },
     manager: { title: 'Downline JD Approvals', subtitle: 'Job descriptions from your direct reports awaiting your review.' },
@@ -86,6 +99,9 @@ const Dashboard = () => {
       {activeTab === 'peer-mentions' && <ApprovalsList mode="peer" />}
       {activeTab === 'chat' && <ChatPanel />}
       {activeTab === 'dashboard' && user.role === 'hr' && <AdminOverview />}
+      {activeTab === 'ops' && user.role === 'hr' && <OpsPanel />}
+      {activeTab === 'ai-metrics' && user.role === 'hr' && <AiMetricsPanel />}
+      {activeTab === 'ask' && <AskPanel />}
     </AppShell>
   );
 };

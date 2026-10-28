@@ -1,7 +1,10 @@
-// Rule-based JD-building assistant. Deterministically walks a user through a
-// question flow and fills in a JobDescription draft as they answer.
-// If ANTHROPIC_API_KEY is set, replies are additionally polished by calling
-// the real Anthropic API (optional, see server/.env.example).
+// Legacy rule-based JD question flow (Baseline v0).
+//
+// The agentic drafting pipeline lives in the Python agent service (agent/).
+// This deterministic flow is kept as the *final fallback*: if AGENT_URL is not
+// configured or the agent service is unreachable, the app keeps working with
+// the original 7-question script. It is also what the eval harness measures as
+// the baseline (agent/evals/baseline_v0.py mirrors it).
 
 import { IJobDescription } from '../models/JobDescription';
 
@@ -21,7 +24,7 @@ export interface AgentStepResult {
   done: boolean;
 }
 
-const STEPS = [
+export const LEGACY_STEPS = [
   "Let's build your job description together. What is the job title?",
   'Which department or team is this role part of?',
   'Give me a 2-3 sentence summary of what this role is responsible for overall.',
@@ -31,6 +34,9 @@ const STEPS = [
   "Last one - what's the salary range or employment type (e.g. Full-time, $90k-$110k)? You can also say 'skip'.",
 ];
 
+export const AGENT_OPENER =
+  "Hi! Tell me about the role you're hiring for — a one-line brief, a pasted Slack message, or an old JD you want adapted (\"same as this but Senior\"). I'll only ask about what's missing, draft it from similar approved JDs, check it against our style and compliance rules, and flag anything you should confirm.";
+
 function splitList(text: string): string[] {
   return text
     .split(/[,\n]/)
@@ -39,7 +45,7 @@ function splitList(text: string): string[] {
 }
 
 export function firstPrompt(): string {
-  return STEPS[0];
+  return LEGACY_STEPS[0];
 }
 
 export function processAnswer(step: number, userText: string): AgentStepResult {
@@ -67,7 +73,8 @@ export function processAnswer(step: number, userText: string): AgentStepResult {
       break;
     case 6:
       if (!/^skip$/i.test(text)) {
-        patch.employmentType = text;
+        if (/[$₹£€]|\d/.test(text)) patch.salaryRange = text;
+        else patch.employmentType = text;
       }
       break;
     default:
@@ -75,16 +82,18 @@ export function processAnswer(step: number, userText: string): AgentStepResult {
   }
 
   const nextStep = step + 1;
-  const done = nextStep >= STEPS.length;
+  const done = nextStep >= LEGACY_STEPS.length;
 
   const reply = done
     ? "Great, I've drafted your job description from our conversation. You can review and edit every section before submitting it for approval."
-    : STEPS[nextStep];
+    : LEGACY_STEPS[nextStep];
 
   return { reply, nextStep, patch, done };
 }
 
-export function summarizeDraft(jd: Pick<IJobDescription, 'title' | 'department' | 'summary' | 'responsibilities' | 'qualifications' | 'skills' | 'employmentType'>): string {
+export function summarizeDraft(
+  jd: Pick<IJobDescription, 'title' | 'department' | 'summary' | 'responsibilities' | 'qualifications' | 'skills' | 'employmentType'>,
+): string {
   const lines = [
     `**${jd.title || 'Untitled role'}** — ${jd.department || 'Unassigned department'} (${jd.employmentType || 'Full-time'})`,
     '',
@@ -100,36 +109,4 @@ export function summarizeDraft(jd: Pick<IJobDescription, 'title' | 'department' 
     ...(jd.skills.length ? jd.skills.map((s) => `- ${s}`) : ['- (none yet)']),
   ];
   return lines.join('\n');
-}
-
-export async function polishWithAnthropic(rawSummary: string): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [
-          {
-            role: 'user',
-            content: `Polish this rough job-description draft into clear, professional prose. Keep the same sections and facts, do not invent new requirements:\n\n${rawSummary}`,
-          },
-        ],
-      }),
-    });
-    if (!resp.ok) return null;
-    const data: any = await resp.json();
-    const text = (data.content || []).find((c: any) => c.type === 'text')?.text;
-    return text || null;
-  } catch {
-    return null;
-  }
 }
