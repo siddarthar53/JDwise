@@ -3,8 +3,8 @@
 Default: a deterministic feature-hashing embedder (word unigrams + bigrams +
 character trigrams, sublinear TF, signed hashing, L2-normalised). It needs no
 network or API key, so the whole system and the eval suite run offline.
-Set EMBEDDINGS_PROVIDER=voyage (+ VOYAGE_API_KEY) to use a neural embedding
-model instead; the store records which embedder produced each vector and
+Set EMBEDDINGS_PROVIDER=voyage (+ VOYAGE_API_KEY) or openrouter
+(+ OPENROUTER_API_KEY, EMBEDDINGS_MODEL) to use a neural embedding model instead; the store records which embedder produced each vector and
 re-embeds on mismatch.
 """
 from __future__ import annotations
@@ -81,13 +81,44 @@ class VoyageEmbedder:
         return arr
 
 
+class OpenRouterEmbedder:
+    """OpenRouter's OpenAI-compatible /embeddings endpoint (EMBEDDINGS_MODEL)."""
+
+    def __init__(self):
+        self.model = settings.embeddings_model
+        self.name = f"openrouter:{self.model}"
+
+    def embed(self, texts: Sequence[str]) -> np.ndarray:
+        import httpx
+
+        vecs: list[list[float]] = []
+        for start in range(0, len(texts), 64):
+            batch = list(texts[start:start + 64])
+            r = httpx.post(
+                f"{settings.openrouter_base_url.rstrip('/')}/embeddings",
+                headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
+                json={"input": batch, "model": self.model},
+                timeout=60,
+            )
+            r.raise_for_status()
+            data = r.json()
+            if data.get("error") or "data" not in data:
+                raise RuntimeError(f"openrouter embeddings: {data.get('error')}")
+            vecs.extend(d["embedding"] for d in sorted(data["data"], key=lambda d: d.get("index", 0)))
+        arr = np.asarray(vecs, dtype=np.float32)
+        arr /= np.linalg.norm(arr, axis=1, keepdims=True) + 1e-9
+        return arr
+
+
 _embedder = None
 
 
 def get_embedder():
     global _embedder
     if _embedder is None:
-        if settings.embeddings_provider == "voyage" and settings.voyage_api_key:
+        if settings.embeddings_provider == "openrouter" and settings.openrouter_api_key:
+            _embedder = OpenRouterEmbedder()
+        elif settings.embeddings_provider == "voyage" and settings.voyage_api_key:
             _embedder = VoyageEmbedder()
         else:
             _embedder = HashingEmbedder()

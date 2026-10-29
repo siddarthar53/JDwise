@@ -37,8 +37,10 @@ class Settings:
     callback_url: str = field(default_factory=lambda: os.getenv("API_CALLBACK_URL", "http://localhost:5000/api/internal/agent-callback"))
 
     # LLM
-    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "auto"))  # auto | anthropic | heuristic
+    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "auto"))  # auto | anthropic | openrouter | heuristic
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
+    openrouter_api_key: str = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""))
+    openrouter_base_url: str = field(default_factory=lambda: os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"))
     model_large: str = field(default_factory=lambda: os.getenv("MODEL_LARGE", "claude-sonnet-5-5"))
     model_small: str = field(default_factory=lambda: os.getenv("MODEL_SMALL", "claude-haiku-5-5"))
     llm_timeout_s: float = field(default_factory=lambda: _float("LLM_TIMEOUT_S", 45.0))
@@ -50,7 +52,8 @@ class Settings:
     price_small_out: float = field(default_factory=lambda: _float("PRICE_SMALL_OUT", 5.0))
 
     # Embeddings
-    embeddings_provider: str = field(default_factory=lambda: os.getenv("EMBEDDINGS_PROVIDER", "hashing"))
+    embeddings_provider: str = field(default_factory=lambda: os.getenv("EMBEDDINGS_PROVIDER", "hashing"))  # hashing | voyage | openrouter
+    embeddings_model: str = field(default_factory=lambda: os.getenv("EMBEDDINGS_MODEL", "nvidia/nemotron-3.5-embed-8b:free"))
     voyage_api_key: str = field(default_factory=lambda: os.getenv("VOYAGE_API_KEY", ""))
 
     # Retrieval
@@ -72,12 +75,19 @@ class Settings:
     prompt_version: str = field(default_factory=lambda: os.getenv("PROMPT_VERSION", "v1.0"))
 
     @property
+    def llm_backend(self) -> str:
+        """Resolved provider: anthropic | openrouter | heuristic."""
+        if self.llm_provider in {"heuristic", "anthropic", "openrouter"}:
+            return self.llm_provider
+        if self.anthropic_api_key:
+            return "anthropic"
+        if self.openrouter_api_key:
+            return "openrouter"
+        return "heuristic"
+
+    @property
     def use_llm(self) -> bool:
-        if self.llm_provider == "heuristic":
-            return False
-        if self.llm_provider == "anthropic":
-            return True
-        return bool(self.anthropic_api_key)
+        return self.llm_backend != "heuristic"
 
 
 settings = Settings()

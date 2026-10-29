@@ -67,3 +67,56 @@ def test_budget_exceeded_short_circuits(llm_on, ctx):
     llm.set_client(FakeClient([]))
     with pytest.raises(llm.LLMUnavailable):
         llm.structured("x", OpsRoute, "s", "u")
+
+
+class FakeHTTP:
+    def __init__(self, payloads):
+        self.payloads = list(payloads)
+        self.posts = []
+
+    def post(self, path, json):
+        self.posts.append((path, json))
+        data = self.payloads.pop(0)
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: data)
+
+
+def _or_resp(message):
+    return {"choices": [{"message": message}],
+            "usage": {"prompt_tokens": 120, "completion_tokens": 30, "prompt_tokens_details": {"cached_tokens": 40}}}
+
+
+def test_openrouter_adapter_maps_tool_call(llm_on, ctx):
+    client = llm.OpenRouterClient("k", "https://example.test/api/v1", 5)
+    client._http = FakeHTTP([_or_resp({"tool_calls": [{"function": {"name": "emit_opsroute",
+                                                                     "arguments": '{"query_id": "status_counts"}'}}]})])
+    llm.set_client(client)
+    r = llm.structured("ops_route", OpsRoute, "sys", "q", tier="small")
+    assert r.query_id == "status_counts"
+    path, body = client._http.posts[0]
+    assert path == "/chat/completions"
+    assert body["messages"][0]["role"] == "system" and "sys" in body["messages"][0]["content"]
+    assert body["tool_choice"] == {"type": "function", "function": {"name": "emit_opsroute"}}
+    assert body["tools"][0]["function"]["parameters"]["type"] == "object"
+    assert ctx.input_tokens == 120 and ctx.cache_read_tokens == 40
+
+
+def test_openrouter_adapter_bad_json_triggers_repair(llm_on, ctx):
+    client = llm.OpenRouterClient("k", "https://example.test/api/v1", 5)
+    client._http = FakeHTTP([
+        _or_resp({"tool_calls": [{"function": {"name": "emit_opsroute", "arguments": "{not json"}}]}),
+        _or_resp({"content": '{"query_id": "throughput"}'}),  # bare-JSON answer is accepted too
+    ])
+    llm.set_client(client)
+    r = llm.structured("ops_route", OpsRoute, "sys", "q")
+    assert r.query_id == "throughput" and ctx.validation_errors == 1
+
+
+def test_auto_provider_resolution(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+    assert config.reload_settings().llm_backend == "openrouter"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    assert config.reload_settings().llm_backend == "anthropic"
+    monkeypatch.setenv("LLM_PROVIDER", "heuristic")
+    config.reload_settings()

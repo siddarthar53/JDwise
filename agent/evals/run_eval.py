@@ -487,7 +487,7 @@ def main():
     cases = load_cases(args.split)
     if args.limit:
         cases = cases[: args.limit]
-    res: dict = {"meta": {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "provider": "anthropic" if config.settings.use_llm else "heuristic",
+    res: dict = {"meta": {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "provider": config.settings.llm_backend,
                           "split": args.split, "n_cases": len(cases), "prompt_version": config.settings.prompt_version, "repeats": args.repeats}}
     if args.suite in ("all", "e2e"):
         runs = [suite_e2e(cases) for _ in range(args.repeats)]

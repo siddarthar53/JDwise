@@ -103,9 +103,8 @@ Prerequisites: Node ≥ 18, Python ≥ 3.11, MongoDB (local or Atlas).
 cd agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env            # set MONGODB_URI; ANTHROPIC_API_KEY optional
-set -a && source .env && set +a
-uvicorn app.main:app --port 8001
+cp .env.example .env            # set MONGODB_URI; ANTHROPIC_API_KEY or OPENROUTER_API_KEY optional
+uvicorn app.main:app --port 8001 --env-file .env   # works in bash, cmd and PowerShell
 
 # 2. API
 cd server
@@ -135,7 +134,7 @@ CI (`.github/workflows/ci.yml`) type-checks and builds the web app, runs API tes
 
 **`server/.env`** — `MONGODB_URI`, `JWT_SECRET` (required in production), `PORT`, `CLIENT_ORIGIN`, `AGENT_URL` (empty = legacy flow only), `AGENT_SHARED_SECRET` (must match the agent), `OPS_SCAN_MINUTES` (default 60, 0 disables), `OPS_STUCK_HOURS` (default 48).
 
-**`agent/.env`** — `MONGODB_URI`, `AGENT_SHARED_SECRET`, `API_CALLBACK_URL`, `LLM_PROVIDER` (`auto`/`anthropic`/`heuristic`), `ANTHROPIC_API_KEY`, `MODEL_LARGE`, `MODEL_SMALL`, `PRICE_*` (for cost tracking — set to your contract prices), `EMBEDDINGS_PROVIDER` (`hashing`/`voyage`) + `VOYAGE_API_KEY`, `RETRIEVAL_MODE`, `USE_RERANKER`, budgets (`MAX_TOKENS_PER_RUN`, `DAILY_TOKEN_BUDGET_PER_USER`, `MAX_TOOL_CALLS`, `CRITIC_MAX_ITERS`, `INTAKE_MAX_TURNS`), `CONFIDENCE_THRESHOLD`, `PAY_TRANSPARENCY_REQUIRED`, `PROMPT_VERSION`.
+**`agent/.env`** — `MONGODB_URI`, `AGENT_SHARED_SECRET`, `API_CALLBACK_URL`, `LLM_PROVIDER` (`auto`/`anthropic`/`openrouter`/`heuristic`), `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY` (+ optional `OPENROUTER_BASE_URL`), `MODEL_LARGE`, `MODEL_SMALL`, `PRICE_*` (for cost tracking — set to your contract prices), `EMBEDDINGS_PROVIDER` (`hashing`/`voyage`/`openrouter`) + `VOYAGE_API_KEY` / `EMBEDDINGS_MODEL`, `RETRIEVAL_MODE`, `USE_RERANKER`, budgets (`MAX_TOKENS_PER_RUN`, `DAILY_TOKEN_BUDGET_PER_USER`, `MAX_TOOL_CALLS`, `CRITIC_MAX_ITERS`, `INTAKE_MAX_TURNS`), `CONFIDENCE_THRESHOLD`, `PAY_TRANSPARENCY_REQUIRED`, `PROMPT_VERSION`.
 
 **`.env`** (web) — `VITE_API_URL`.
 

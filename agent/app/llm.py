@@ -9,12 +9,15 @@
 * Model routing: ``tier="small"`` for intake/critic/routing, ``"large"`` for
   generation and revision.
 * Prompt caching: the static system prefix is marked ``cache_control``.
+* Providers: Anthropic (native SDK) or OpenRouter (``OpenRouterClient``
+  adapter over its OpenAI-compatible API), selected by ``LLM_PROVIDER``.
 """
 from __future__ import annotations
 
 import copy
 import json
 import time
+from types import SimpleNamespace
 from typing import Literal, Optional, Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -34,12 +37,70 @@ class LLMUnavailable(Exception):
 _client = None
 
 
+class OpenRouterClient:
+    """Adapter exposing ``messages.create`` (Anthropic-style kwargs and response
+    shape) on top of OpenRouter's OpenAI-compatible chat completions API, so
+    ``structured`` is provider-agnostic. Forced tool choice maps to a forced
+    function call; usage maps to input/output/cache-read tokens."""
+
+    def __init__(self, api_key: str, base_url: str, timeout: float):
+        import httpx
+
+        self._http = httpx.Client(
+            base_url=base_url.rstrip("/"),
+            timeout=timeout,
+            headers={"Authorization": f"Bearer {api_key}", "X-Title": "JDFlow agent"},
+        )
+        self.messages = self
+
+    def create(self, *, model, max_tokens, system, tools, tool_choice, messages):
+        sys_text = "\n".join(b["text"] for b in system) if isinstance(system, list) else system
+        body = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "system", "content": sys_text}] + list(messages),
+            "tools": [{"type": "function", "function": {"name": t["name"], "description": t["description"],
+                                                         "parameters": t["input_schema"]}} for t in tools],
+            "tool_choice": {"type": "function", "function": {"name": tool_choice["name"]}},
+        }
+        r = self._http.post("/chat/completions", json=body)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("error"):
+            raise RuntimeError(f"openrouter: {data['error']}")
+        msg = (data.get("choices") or [{}])[0].get("message") or {}
+        content = []
+        for tc in msg.get("tool_calls") or []:
+            args = tc.get("function", {}).get("arguments")
+            try:
+                args = json.loads(args) if isinstance(args, str) else args
+            except json.JSONDecodeError:
+                pass  # left as a string; validation fails and triggers the repair prompt
+            content.append(SimpleNamespace(type="tool_use", input=args))
+        if not content and msg.get("content"):
+            # some models answer with bare JSON instead of a tool call
+            try:
+                content.append(SimpleNamespace(type="tool_use", input=json.loads(msg["content"])))
+            except json.JSONDecodeError:
+                pass
+        u = data.get("usage") or {}
+        usage = SimpleNamespace(
+            input_tokens=u.get("prompt_tokens", 0),
+            output_tokens=u.get("completion_tokens", 0),
+            cache_read_input_tokens=(u.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
+        )
+        return SimpleNamespace(content=content, usage=usage)
+
+
 def _get_client():
     global _client
     if _client is None:
-        import anthropic  # imported lazily so heuristic mode has no hard dependency
+        if settings.llm_backend == "openrouter":
+            _client = OpenRouterClient(settings.openrouter_api_key, settings.openrouter_base_url, settings.llm_timeout_s)
+        else:
+            import anthropic  # imported lazily so heuristic mode has no hard dependency
 
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=settings.llm_timeout_s, max_retries=0)
+            _client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=settings.llm_timeout_s, max_retries=0)
     return _client
 
 

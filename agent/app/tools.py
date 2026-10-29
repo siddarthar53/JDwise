@@ -88,9 +88,9 @@ def _duplicate(a: DuplicateArgs, state: dict) -> dict:
     out = []
     if hits:
         emb = get_embedder()
-        qv = emb.embed([f"{a.title}"])[0]
-        for h in hits:
-            tv = emb.embed([h["chunk"]["title"]])[0]
+        vecs = emb.embed([a.title] + [h["chunk"]["title"] for h in hits])  # one call, not one per hit
+        qv = vecs[0]
+        for h, tv in zip(hits, vecs[1:]):
             title_sim = float(np.dot(qv, tv))
             sim = 0.5 * title_sim + 0.5 * h["scores"]["dense"]
             if title_sim >= a.threshold or sim >= a.threshold:

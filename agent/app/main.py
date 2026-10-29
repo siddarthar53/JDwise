@@ -60,7 +60,7 @@ signed = [Depends(verify)]
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "service": "jd-agent", "provider": "anthropic" if settings.use_llm else "heuristic",
+    return {"ok": True, "service": "jd-agent", "provider": settings.llm_backend,
             "db": _ready["db"], "kb_ready": _ready["kb"], "prompt_version": settings.prompt_version}
 
 

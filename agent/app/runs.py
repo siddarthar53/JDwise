@@ -83,7 +83,7 @@ def new_run(kind: str, thread_id: str = "", user_hash: str = "", idempotency_key
         "metrics": {},
         "llm_calls": [],
         "tool_calls": [],
-        "provider": "anthropic" if settings.use_llm else "heuristic",
+        "provider": settings.llm_backend,
         "models": {"large": settings.model_large, "small": settings.model_small} if settings.use_llm else {},
         "prompt_version": settings.prompt_version,
         "input_preview": redact(input_preview)[:300],
@@ -343,6 +343,6 @@ def metrics_summary(days: int = 30) -> dict:
         "fallback_rate": round(sum(1 for r in runs if (r.get("metrics") or {}).get("fallbacks", 0) > 0) / len(runs), 3) if runs else None,
         "first_pass_schema_validity": round(sum(1 for v in gen_valid if v) / len(gen_valid), 3) if gen_valid else None,
         "critic_score_gain_avg": round(sum(score_gain) / len(score_gain), 3) if score_gain else None,
-        "provider": "anthropic" if settings.use_llm else "heuristic",
+        "provider": settings.llm_backend,
         "top_failure_reasons": sorted(fail_reasons.items(), key=lambda kv: -kv[1])[:5],
     }
